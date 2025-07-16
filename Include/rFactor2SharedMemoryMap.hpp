@@ -117,6 +117,9 @@ public:
   static char const* const MM_PIT_INFO_FILE_NAME;
   static char const* const MM_WEATHER_FILE_NAME;
 
+  // LMU Extended buffer:
+  static char const* const MM_LMU_EXTENDED_FILE_NAME;
+
   // Input buffers:
   static char const* const MM_HWCONTROL_FILE_NAME;
   static char const* const MM_WEATHER_CONTROL_FILE_NAME;
@@ -256,6 +259,26 @@ private:
     DamageTracking mDamageTrackingInfos[rF2Extended::MAX_MAPPED_IDS];
   };
 
+  class LMUExtendedStateTracker
+  {
+  public:
+    LMUExtendedStateTracker()
+    {
+      memset(&mLMUExtended, 0, sizeof(LMU_Extended));
+
+      static_assert(sizeof(mLMUExtended.mVersion) >= sizeof(SHARED_MEMORY_VERSION), "Invalid plugin version string (too long).");
+
+      strcpy_s(mLMUExtended.mVersion, SHARED_MEMORY_VERSION);
+      mLMUExtended.mSessionStarted = false;
+      mLMUExtended.mpTractionControl = 0;
+      mLMUExtended.mFront_ABR = 0;
+      mLMUExtended.mRear_ABR = 0;
+    }
+
+  public:
+    LMU_Extended mLMUExtended = {};
+  };
+
 public:
   SharedMemoryPlugin();
   ~SharedMemoryPlugin() override {}
@@ -344,6 +367,9 @@ private:
   void ClearState();
   void ClearTimingsAndCounters();
 
+  // LMU Extended state update
+  void UpdateLMUExtendedState(ScoringInfoV01 const& info);
+
   void TelemetryTraceSkipUpdate(TelemInfoV01 const& info, double deltaET);
   void TelemetryTraceBeginUpdate(double telUpdateET, double deltaET);
   void TelemetryTraceVehicleAdded(TelemInfoV01 const& infos);
@@ -375,6 +401,9 @@ private:
   double mLastMultiRulesUpdateMillis = 0.0;
 
   ExtendedStateTracker mExtStateTracker;
+
+  // LMU Extended State Tracker
+  LMUExtendedStateTracker mLMUExtStateTracker;
 
   // Elapsed times reported by the game.
   double mLastTelemetryUpdateET = -1.0;
@@ -416,6 +445,9 @@ private:
   MappedBuffer<rF2Extended> mExtended;
   MappedBuffer<rF2PitInfo> mPitInfo;
   MappedBuffer<rF2Weather> mWeather;
+
+  // LMU Extended buffer:
+  MappedBuffer<LMU_Extended> mLMUExtended;
 
   // Input buffers:
   MappedBuffer<rF2HWControl> mHWControl;

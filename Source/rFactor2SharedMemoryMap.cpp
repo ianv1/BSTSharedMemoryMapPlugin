@@ -180,6 +180,8 @@ char const* const SharedMemoryPlugin::MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Ext
 char const* const SharedMemoryPlugin::MM_PIT_INFO_FILE_NAME = "$rFactor2SMMP_PitInfo$";
 char const* const SharedMemoryPlugin::MM_WEATHER_FILE_NAME = "$rFactor2SMMP_Weather$";
 
+char const* const SharedMemoryPlugin::MM_LMU_EXTENDED_FILE_NAME = "$LMU_SMMP_Extended$";
+
 char const* const SharedMemoryPlugin::MM_HWCONTROL_FILE_NAME = "$rFactor2SMMP_HWControl$";
 char const* const SharedMemoryPlugin::MM_WEATHER_CONTROL_FILE_NAME = "$rFactor2SMMP_WeatherControl$";
 char const* const SharedMemoryPlugin::MM_RULES_CONTROL_FILE_NAME = "$rFactor2SMMP_RulesControl$";
@@ -220,6 +222,7 @@ SharedMemoryPlugin::SharedMemoryPlugin()
     , mExtended(SharedMemoryPlugin::MM_EXTENDED_FILE_NAME)
     , mPitInfo(SharedMemoryPlugin::MM_PIT_INFO_FILE_NAME)
     , mWeather(SharedMemoryPlugin::MM_WEATHER_FILE_NAME)
+    , mLMUExtended(SharedMemoryPlugin::MM_LMU_EXTENDED_FILE_NAME)
     , mHWControl(SharedMemoryPlugin::MM_HWCONTROL_FILE_NAME, rF2HWControl::SUPPORTED_LAYOUT_VERSION)
     , mWeatherControl(SharedMemoryPlugin::MM_WEATHER_CONTROL_FILE_NAME, rF2WeatherControl::SUPPORTED_LAYOUT_VERSION)
     , mRulesControl(SharedMemoryPlugin::MM_RULES_CONTROL_FILE_NAME, rF2RulesControl::SUPPORTED_LAYOUT_VERSION)
@@ -320,6 +323,9 @@ void SharedMemoryPlugin::Startup(long version)
   // Extended buffer is initialized last and is an indicator of initialization completed.
   RETURN_IF_FALSE(InitMappedBuffer(mExtended, "Extended", SubscribedBuffer::All));
   
+  // LMU Extended buffer initialization
+  RETURN_IF_FALSE(InitMappedBuffer(mLMUExtended, "LMU Extended", SubscribedBuffer::All));
+  
   // Runtime asserts to ensure the correct layout of partially updated buffers.
   assert(sizeof(rF2Telemetry) == offsetof(rF2Telemetry, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
   assert(sizeof(rF2Scoring) == offsetof(rF2Scoring, mVehicles[rF2MappedBufferHeader::MAX_MAPPED_VEHICLES]));
@@ -374,6 +380,11 @@ void SharedMemoryPlugin::Startup(long version)
   mExtended.BeginUpdate();
   memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
+
+  // Initialize LMU Extended buffer
+  mLMUExtended.BeginUpdate();
+  memcpy(mLMUExtended.mpWriteBuff, &(mLMUExtStateTracker.mLMUExtended), sizeof(LMU_Extended));
+  mLMUExtended.EndUpdate();
 }
 
 
@@ -429,6 +440,9 @@ void SharedMemoryPlugin::Shutdown()
 
   mWeather.ClearState(nullptr /*pInitialContents*/);
   mWeather.ReleaseResources();
+
+  mLMUExtended.ClearState(nullptr /*pInitialContents*/);
+  mLMUExtended.ReleaseResources();
 
   mHWControl.ReleaseResources();
   mWeatherControl.ReleaseResources();
@@ -487,6 +501,9 @@ void SharedMemoryPlugin::ClearState()
   mExtStateTracker.ClearState();
   mExtended.ClearState(&(mExtStateTracker.mExtended));
 
+  // Clear LMU Extended state
+  mLMUExtended.ClearState(&(mLMUExtStateTracker.mLMUExtended));
+
   ClearTimingsAndCounters();
 }
 
@@ -544,6 +561,12 @@ void SharedMemoryPlugin::EndSession()
   mExtended.BeginUpdate();
   memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
+
+  // Update LMU session state
+  mLMUExtStateTracker.mLMUExtended.mSessionStarted = false;
+  mLMUExtended.BeginUpdate();
+  memcpy(mLMUExtended.mpWriteBuff, &(mLMUExtStateTracker.mLMUExtended), sizeof(LMU_Extended));
+  mLMUExtended.EndUpdate();
 }
 
 
@@ -928,6 +951,9 @@ void SharedMemoryPlugin::UpdateScoring(ScoringInfoV01 const& info)
   mExtended.BeginUpdate();
   memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
+
+  // Update LMU Extended state
+  UpdateLMUExtendedState(info);
 }
 
 
@@ -1672,4 +1698,51 @@ void SharedMemoryPlugin::TraceLastWin32Error()
     DEBUG_MSG(DebugLevel::Errors, DebugSource::General, "Win32 error description: %s", messageBuffer);
 
   ::LocalFree(messageBuffer);
+}
+
+
+void SharedMemoryPlugin::UpdateLMUExtendedState(ScoringInfoV01 const& info)
+{
+  if (!mIsMapped)
+    return;
+
+  // Update session started state
+  mLMUExtStateTracker.mLMUExtended.mSessionStarted = mExtStateTracker.mExtended.mSessionStarted;
+
+  // For now, initialize LMU-specific values to default values
+  // In a real LMU implementation, these would be read from game memory
+  // using Direct Memory Access or other game-specific methods
+  
+  // These are placeholder values - in actual LMU implementation,
+  // you would read these from the game's memory or API
+  mLMUExtStateTracker.mLMUExtended.mpTractionControl = 0;  // 0-3 (off to high)
+  mLMUExtStateTracker.mLMUExtended.mFront_ABR = 0;        // Front anti-lock brake setting
+  mLMUExtStateTracker.mLMUExtended.mRear_ABR = 0;         // Rear anti-lock brake setting
+
+  // If Direct Memory Access is requested and available, we could read LMU-specific values here
+  if (SharedMemoryPlugin::msDirectMemoryAccessRequested && mExtStateTracker.mExtended.mDirectMemoryAccessEnabled) {
+    // Note: This would require LMU-specific memory patterns and addresses
+    // For now, we're using default values as placeholders
+    
+    // Find player vehicle to get vehicle-specific settings
+    long playerID = -1;
+    for (int i = 0; i < info.mNumVehicles; ++i) {
+      if (info.mVehicle[i].mIsPlayer) {
+        playerID = info.mVehicle[i].mID;
+        break;
+      }
+    }
+
+    // If we have a player vehicle, we could read LMU-specific data here
+    // This would require implementing LMU-specific DirectMemoryReader functionality
+    if (playerID >= 0) {
+      // Placeholder: In real implementation, read from LMU memory
+      DEBUG_MSG(DebugLevel::DevInfo, DebugSource::General, "LMU: Player vehicle ID: %ld", playerID);
+    }
+  }
+
+  // Update the LMU Extended buffer
+  mLMUExtended.BeginUpdate();
+  memcpy(mLMUExtended.mpWriteBuff, &(mLMUExtStateTracker.mLMUExtended), sizeof(LMU_Extended));
+  mLMUExtended.EndUpdate();
 }

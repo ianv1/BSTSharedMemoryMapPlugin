@@ -971,12 +971,6 @@ struct rF2Extended : public rF2MappedBufferHeader
   char mVersion[12];                           // API version
   bool is64bit;                                // Is 64bit plugin?
 
-  // Physics options (updated on session start):
-  rF2PhysicsOptions mPhysics;
-
-  // Damage tracking for each vehicle (indexed by mID % rF2Extended::MAX_MAPPED_IDS):
-  rF2TrackedDamage mTrackedDamages[rF2Extended::MAX_MAPPED_IDS];
-
   // Function call based flags:
   bool mInRealtimeFC;                         // in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
   bool mMultimediaThreadStarted;              // multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
@@ -987,7 +981,7 @@ struct rF2Extended : public rF2MappedBufferHeader
   ULONGLONG mTicksSessionEnded;               // Ticks when session ended.
 
   // FUTURE: It might be worth to keep the whole scoring capture as a separate double buffer instead of this.
-  rF2SessionTransitionCapture mSessionTransitionCapture;  // Contains partial internals capture at session transition time.
+  // rF2SessionTransitionCapture mSessionTransitionCapture;  // Contains partial internals capture at session transition time.
 
   // Captured non-empty MessageInfoV01::mText message.
   char mDisplayedMessageUpdateCapture[sizeof(decltype(MessageInfoV01::mText))];
@@ -1024,8 +1018,15 @@ struct rF2Extended : public rF2MappedBufferHeader
   bool mWeatherControlInputEnabled;               // Weather Control input buffer is enabled.
   bool mRulesControlInputEnabled;                 // Rules Control input buffer is enabled.
   bool mPluginControlInputEnabled;                // Plugin Control input buffer is enabled.
-};
 
+  struct TrackedDamage
+  {
+    float mMaxImpactMagnitude;
+    float mAccumulatedImpactMagnitude;
+  };
+
+  TrackedDamage mTrackedDamages[rF2Extended::MAX_MAPPED_IDS];
+};
 
 struct rF2MappedInputBufferHeader : public rF2MappedBufferHeader
 {
@@ -1077,5 +1078,16 @@ struct rF2PluginControl : public rF2MappedInputBufferHeader
   bool mRequestRulesControlInput;
 };
 
+// LMU Extended structure - minimal structure for LMU game support
+struct LMU_Extended : public rF2MappedBufferHeader
+{
+  static int const MAX_MAPPED_IDS = 512;
+
+  char mVersion[12];                           // API version
+  bool mSessionStarted;                        // True if Session Started was called
+  int mpTractionControl;                       // Traction control setting
+  int mFront_ABR;                             // Front anti-blocking brake setting
+  int mRear_ABR;                              // Rear anti-blocking brake setting
+};
 
 #pragma pack(pop)
