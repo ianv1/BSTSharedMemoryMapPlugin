@@ -1080,16 +1080,80 @@ struct rF2PluginControl : public rF2MappedInputBufferHeader
   bool mRequestRulesControlInput;
 };
 
-// LMU Extended structure - minimal structure for LMU game support
+// LMU Extended structure - comprehensive structure for LMU game support
 struct LMU_Extended : public rF2MappedBufferHeader
 {
   static int const MAX_MAPPED_IDS = 512;
+  static int const MAX_STATUS_MSG_LEN = 128;
+  static int const MAX_RULES_INSTRUCTION_MSG_LEN = 96;
 
   char mVersion[12];                           // API version
-  bool mSessionStarted;                        // True if Session Started was called
-  int mpTractionControl;                       // Traction control setting
-  int mFront_ABR;                             // Front anti-blocking brake setting
-  int mRear_ABR;                              // Rear anti-blocking brake setting
+  bool is64bit;                                // Is 64bit plugin?
+
+  // Function call based flags:
+  bool mInRealtimeFC;                         // in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
+  //bool mMultimediaThreadStarted;              // multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
+  //bool mSimulationThreadStarted;              // simulation thread started (reported via ThreadStarted/ThreadStopped calls).
+
+  bool mSessionStarted;                       // True if Session Started was called.
+  ULONGLONG mTicksSessionStarted;             // Ticks when session started.
+  ULONGLONG mTicksSessionEnded;               // Ticks when session ended.
+
+  // FUTURE: It might be worth to keep the whole scoring capture as a separate double buffer instead of this.
+  //rF2SessionTransitionCapture mSessionTransitionCapture;  // Contains partial internals capture at session transition time.
+
+  // Captured non-empty MessageInfoV01::mText message.
+  //char mDisplayedMessageUpdateCapture[sizeof(decltype(MessageInfoV01::mText))];
+
+  // Direct Memory access stuff
+  bool mDirectMemoryAccessEnabled;
+
+  //ULONGLONG mTicksStatusMessageUpdated;             // Ticks when status message was updated;
+  //char mStatusMessage[LMU_Extended::MAX_STATUS_MSG_LEN];
+
+  //ULONGLONG mTicksLastHistoryMessageUpdated;        // Ticks when last message history message was updated;
+  //char mLastHistoryMessage[LMU_Extended::MAX_STATUS_MSG_LEN];
+
+  //float mCurrentPitSpeedLimit;                      // speed limit m/s.
+
+  //bool mSCRPluginEnabled;                           // Is Stock Car Rules plugin enabled?
+  //long mSCRPluginDoubleFileType;                    // Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
+
+  //ULONGLONG mTicksLSIPhaseMessageUpdated;           // Ticks when last LSI phase message was updated.
+  //char mLSIPhaseMessage[LMU_Extended::MAX_RULES_INSTRUCTION_MSG_LEN];
+
+  //ULONGLONG mTicksLSIPitStateMessageUpdated;        // Ticks when last LSI pit state message was updated.
+  //char mLSIPitStateMessage[LMU_Extended::MAX_RULES_INSTRUCTION_MSG_LEN];
+
+  //ULONGLONG mTicksLSIOrderInstructionMessageUpdated;     // Ticks when last LSI order instruction message was updated.
+  //char mLSIOrderInstructionMessage[LMU_Extended::MAX_RULES_INSTRUCTION_MSG_LEN];
+
+  //ULONGLONG mTicksLSIRulesInstructionMessageUpdated;     // Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
+  //char mLSIRulesInstructionMessage[LMU_Extended::MAX_RULES_INSTRUCTION_MSG_LEN];
+
+  long mUnsubscribedBuffersMask;                  // Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
+
+  //bool mHWControlInputEnabled;                    // HWControl input buffer is enabled.
+  //bool mWeatherControlInputEnabled;               // Weather Control input buffer is enabled.
+  //bool mRulesControlInputEnabled;                 // Rules Control input buffer is enabled.
+  //bool mPluginControlInputEnabled;                // Plugin Control input buffer is enabled.
+
+  int mpBrakeMigration;
+  int mpBrakeMigrationMax;
+  int mpTractionControl;
+  char mpMotorMap[16];
+  int mChangedParamType;
+  char mChangedParamValue[16];
+  int mFront_ABR;
+  int mRear_ABR;
+  int mPenaltyType;
+  int mPenaltyCount;
+  int mPenaltyLeftLaps;
+  int mPendingPenaltyType1;
+  int mPendingPenaltyType2;
+  int mPendingPenaltyType3;
+  float mCuts;
+  int mCutsPoints;
 };
 
 #pragma pack(pop)

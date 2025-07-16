@@ -271,10 +271,29 @@ private:
       static_assert(sizeof(mLMUExtended.mVersion) >= sizeof(SHARED_MEMORY_VERSION), "Invalid plugin version string (too long).");
 
       strcpy_s(mLMUExtended.mVersion, SHARED_MEMORY_VERSION);
+      mLMUExtended.is64bit = PLUGIN_64BIT;
+      mLMUExtended.mInRealtimeFC = false;
       mLMUExtended.mSessionStarted = false;
+      mLMUExtended.mTicksSessionStarted = 0;
+      mLMUExtended.mTicksSessionEnded = 0;
+      mLMUExtended.mDirectMemoryAccessEnabled = false;
+      mLMUExtended.mUnsubscribedBuffersMask = 0;
+      mLMUExtended.mpBrakeMigration = 0;
+      mLMUExtended.mpBrakeMigrationMax = 0;
       mLMUExtended.mpTractionControl = 0;
+      memset(mLMUExtended.mpMotorMap, 0, sizeof(mLMUExtended.mpMotorMap));
+      mLMUExtended.mChangedParamType = 0;
+      memset(mLMUExtended.mChangedParamValue, 0, sizeof(mLMUExtended.mChangedParamValue));
       mLMUExtended.mFront_ABR = 0;
       mLMUExtended.mRear_ABR = 0;
+      mLMUExtended.mPenaltyType = 0;
+      mLMUExtended.mPenaltyCount = 0;
+      mLMUExtended.mPenaltyLeftLaps = 0;
+      mLMUExtended.mPendingPenaltyType1 = 0;
+      mLMUExtended.mPendingPenaltyType2 = 0;
+      mLMUExtended.mPendingPenaltyType3 = 0;
+      mLMUExtended.mCuts = 0.0f;
+      mLMUExtended.mCutsPoints = 0;
     }
 
   public:

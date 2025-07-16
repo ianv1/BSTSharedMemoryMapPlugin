@@ -34,6 +34,9 @@ namespace rF2SMMonitor
     public const string MM_WEATHER_FILE_NAME = "$rFactor2SMMP_Weather$";
     public const string MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
 
+    // LMU Extended buffer:
+    public const string MM_LMU_EXTENDED_FILE_NAME = "$LMU_SMMP_Extended$";
+
     public const string MM_HWCONTROL_FILE_NAME = "$rFactor2SMMP_HWControl$";
     public const int MM_HWCONTROL_LAYOUT_VERSION = 1;
 
@@ -1114,6 +1117,49 @@ namespace rF2SMMonitor
       public byte mRequestHWControlInput;
       public byte mRequestWeatherControlInput;
       public byte mRequestRulesControlInput;
+    }
+
+    // LMU Extended structure - comprehensive structure for LMU game support
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+    public struct LMU_Extended
+    {
+      public uint mVersionUpdateBegin;          // Incremented right before buffer is written to.
+      public uint mVersionUpdateEnd;            // Incremented after buffer write is done.
+
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 12)]
+      public byte[] mVersion;                            // API version
+      public byte is64bit;                               // Is 64bit plugin?
+
+      // Function call based flags:
+      public byte mInRealtimeFC;                         // in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
+
+      public byte mSessionStarted;                       // True if Session Started was called.
+      public Int64 mTicksSessionStarted;                 // Ticks when session started.
+      public Int64 mTicksSessionEnded;                   // Ticks when session ended.
+
+      // Direct Memory access stuff
+      public byte mDirectMemoryAccessEnabled;
+
+      public int mUnsubscribedBuffersMask;               // Currently active UnsbscribedBuffersMask value.
+
+      public int mpBrakeMigration;
+      public int mpBrakeMigrationMax;
+      public int mpTractionControl;
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 16)]
+      public byte[] mpMotorMap;
+      public int mChangedParamType;
+      [MarshalAsAttribute(UnmanagedType.ByValArray, SizeConst = 16)]
+      public byte[] mChangedParamValue;
+      public int mFront_ABR;
+      public int mRear_ABR;
+      public int mPenaltyType;
+      public int mPenaltyCount;
+      public int mPenaltyLeftLaps;
+      public int mPendingPenaltyType1;
+      public int mPendingPenaltyType2;
+      public int mPendingPenaltyType3;
+      public float mCuts;
+      public int mCutsPoints;
     }
 
 

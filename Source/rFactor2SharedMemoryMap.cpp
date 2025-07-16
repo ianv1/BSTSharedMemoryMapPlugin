@@ -525,6 +525,10 @@ void SharedMemoryPlugin::StartSession()
   mExtStateTracker.mExtended.mSessionStarted = true;
   mExtStateTracker.mExtended.mTicksSessionStarted = ::GetTickCount64();
 
+  // Update LMU session state as well
+  mLMUExtStateTracker.mLMUExtended.mSessionStarted = true;
+  mLMUExtStateTracker.mLMUExtended.mTicksSessionStarted = mExtStateTracker.mExtended.mTicksSessionStarted;
+
   // Sometimes, game sends updates, including final qualification positions,
   // between Session Start/End.  We need to capture some of that info, because
   // it might be overwritten by the next session.
@@ -569,6 +573,7 @@ void SharedMemoryPlugin::EndSession()
 
   // Update LMU session state
   mLMUExtStateTracker.mLMUExtended.mSessionStarted = false;
+  mLMUExtStateTracker.mLMUExtended.mTicksSessionEnded = mExtStateTracker.mExtended.mTicksSessionEnded;
   mLMUExtended.BeginUpdate();
   memcpy(mLMUExtended.mpWriteBuff, &(mLMUExtStateTracker.mLMUExtended), sizeof(LMU_Extended));
   mLMUExtended.EndUpdate();
@@ -589,6 +594,12 @@ void SharedMemoryPlugin::UpdateInRealtimeFC(bool inRealTime)
   mExtended.BeginUpdate();
   memcpy(mExtended.mpWriteBuff, &(mExtStateTracker.mExtended), sizeof(rF2Extended));
   mExtended.EndUpdate();
+
+  // Update LMU Extended state as well
+  mLMUExtStateTracker.mLMUExtended.mInRealtimeFC = inRealTime;
+  mLMUExtended.BeginUpdate();
+  memcpy(mLMUExtended.mpWriteBuff, &(mLMUExtStateTracker.mLMUExtended), sizeof(LMU_Extended));
+  mLMUExtended.EndUpdate();
 }
 
 
@@ -1711,38 +1722,71 @@ void SharedMemoryPlugin::UpdateLMUExtendedState(ScoringInfoV01 const& info)
   if (!mIsMapped)
     return;
 
-  // Update session started state
+  // Update core state information
+  mLMUExtStateTracker.mLMUExtended.mInRealtimeFC = mExtStateTracker.mExtended.mInRealtimeFC;
   mLMUExtStateTracker.mLMUExtended.mSessionStarted = mExtStateTracker.mExtended.mSessionStarted;
+  mLMUExtStateTracker.mLMUExtended.mTicksSessionStarted = mExtStateTracker.mExtended.mTicksSessionStarted;
+  mLMUExtStateTracker.mLMUExtended.mTicksSessionEnded = mExtStateTracker.mExtended.mTicksSessionEnded;
+  mLMUExtStateTracker.mLMUExtended.mDirectMemoryAccessEnabled = mExtStateTracker.mExtended.mDirectMemoryAccessEnabled;
+  mLMUExtStateTracker.mLMUExtended.mUnsubscribedBuffersMask = mExtStateTracker.mExtended.mUnsubscribedBuffersMask;
 
   // For now, initialize LMU-specific values to default values
   // In a real LMU implementation, these would be read from game memory
   // using Direct Memory Access or other game-specific methods
   
+  // Find player vehicle to get vehicle-specific settings
+  long playerID = -1;
+  const VehicleScoringInfoV01* playerVehicle = nullptr;
+  for (int i = 0; i < info.mNumVehicles; ++i) {
+    if (info.mVehicle[i].mIsPlayer) {
+      playerID = info.mVehicle[i].mID;
+      playerVehicle = &info.mVehicle[i];
+      break;
+    }
+  }
+
+  // Initialize LMU-specific vehicle parameters
   // These are placeholder values - in actual LMU implementation,
   // you would read these from the game's memory or API
-  mLMUExtStateTracker.mLMUExtended.mpTractionControl = 0;  // 0-3 (off to high)
-  mLMUExtStateTracker.mLMUExtended.mFront_ABR = 0;        // Front anti-lock brake setting
-  mLMUExtStateTracker.mLMUExtended.mRear_ABR = 0;         // Rear anti-lock brake setting
+  mLMUExtStateTracker.mLMUExtended.mpBrakeMigration = 0;      // Brake migration setting
+  mLMUExtStateTracker.mLMUExtended.mpBrakeMigrationMax = 100; // Max brake migration
+  mLMUExtStateTracker.mLMUExtended.mpTractionControl = 0;     // 0-3 (off to high)
+  strcpy_s(mLMUExtStateTracker.mLMUExtended.mpMotorMap, "Default");  // Motor map setting
+  mLMUExtStateTracker.mLMUExtended.mChangedParamType = 0;     // No parameter changed
+  strcpy_s(mLMUExtStateTracker.mLMUExtended.mChangedParamValue, "");  // No value changed
+  mLMUExtStateTracker.mLMUExtended.mFront_ABR = 0;            // Front anti-lock brake setting
+  mLMUExtStateTracker.mLMUExtended.mRear_ABR = 0;             // Rear anti-lock brake setting
+
+  // Initialize penalty and cuts tracking
+  mLMUExtStateTracker.mLMUExtended.mPenaltyType = 0;          // No current penalty
+  mLMUExtStateTracker.mLMUExtended.mPenaltyCount = 0;         // Penalty count
+  mLMUExtStateTracker.mLMUExtended.mPenaltyLeftLaps = 0;      // Laps left to serve penalty
+  mLMUExtStateTracker.mLMUExtended.mPendingPenaltyType1 = 0;  // No pending penalties
+  mLMUExtStateTracker.mLMUExtended.mPendingPenaltyType2 = 0;
+  mLMUExtStateTracker.mLMUExtended.mPendingPenaltyType3 = 0;
+  mLMUExtStateTracker.mLMUExtended.mCuts = 0.0f;              // Track cuts count
+  mLMUExtStateTracker.mLMUExtended.mCutsPoints = 0;           // Penalty points for cuts
 
   // If Direct Memory Access is requested and available, we could read LMU-specific values here
   if (SharedMemoryPlugin::msDirectMemoryAccessRequested && mExtStateTracker.mExtended.mDirectMemoryAccessEnabled) {
     // Note: This would require LMU-specific memory patterns and addresses
     // For now, we're using default values as placeholders
     
-    // Find player vehicle to get vehicle-specific settings
-    long playerID = -1;
-    for (int i = 0; i < info.mNumVehicles; ++i) {
-      if (info.mVehicle[i].mIsPlayer) {
-        playerID = info.mVehicle[i].mID;
-        break;
-      }
-    }
-
     // If we have a player vehicle, we could read LMU-specific data here
     // This would require implementing LMU-specific DirectMemoryReader functionality
-    if (playerID >= 0) {
+    if (playerID >= 0 && playerVehicle != nullptr) {
       // Placeholder: In real implementation, read from LMU memory
       DEBUG_MSG(DebugLevel::DevInfo, DebugSource::General, "LMU: Player vehicle ID: %ld", playerID);
+
+      // Example: Use some scoring data to populate our fields
+      // In a real LMU implementation, you'd read the actual values from memory
+      if (playerVehicle->mFinishStatus == 2) {  // DNF
+        mLMUExtStateTracker.mLMUExtended.mPenaltyType = 1;  // Example penalty for DNF
+      }
+      
+      // Example: Track cuts based on some scoring information
+      // This is just an example - real implementation would track actual cuts
+      mLMUExtStateTracker.mLMUExtended.mCuts = (float)playerVehicle->mPathLateral;  // Example usage
     }
   }
 
