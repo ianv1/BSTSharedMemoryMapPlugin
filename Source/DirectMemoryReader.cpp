@@ -1,3 +1,7 @@
+#pragma warning(disable : 4244)   // Double to float conversion warnings
+#pragma warning(disable : 4626)   // Assignment operator implicitly defined as deleted
+#pragma warning(disable : 5219)   // Implicit conversion from ULONGLONG to double
+
 #include "rFactor2SharedMemoryMap.hpp"
 #include <stdlib.h>
 #include <cstddef>                              // offsetof

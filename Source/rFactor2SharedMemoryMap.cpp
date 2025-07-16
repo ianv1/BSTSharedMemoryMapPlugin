@@ -145,6 +145,11 @@ Limitations/Assumptions:
 Sample consumption:
   For sample C# client, see Monitor\rF2SMMonitor\rF2SMMonitor\MainForm.cs
 */
+
+#pragma warning(disable : 4244)   // Double to float conversion warnings
+#pragma warning(disable : 4626)   // Assignment operator implicitly defined as deleted
+#pragma warning(disable : 5219)   // Implicit conversion from ULONGLONG to double
+
 #include "rFactor2SharedMemoryMap.hpp"          // corresponding header file
 #include <stdlib.h>
 #include <cstddef>                              // offsetof
@@ -1230,7 +1235,7 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
     // Note: all experimental/WIP.
     // Try to keep updated input safe and try to keep it close to the current state/frame.
     auto const currentET = info.mCurrentET;
-    auto const numActions = info.mNumActions;
+    auto const originalNumActions = info.mNumActions;
     auto const pAction = info.mAction;
     auto const numParticipants = info.mNumParticipants;
     auto const safetyCarExists = info.mSafetyCarExists;
@@ -1242,14 +1247,14 @@ bool SharedMemoryPlugin::AccessTrackRules(TrackRulesV01& info)
 
     memcpy(&info, &(mRulesControl.mReadBuff.mTrackRules), sizeof(TrackRulesV01));
 
-    if (info.mNumActions != numActions)
+    if (info.mNumActions != originalNumActions)
       DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Rules control input: mNumActions mismatch.");
 
     if (info.mNumParticipants != numParticipants)
       DEBUG_MSG(DebugLevel::Warnings, DebugSource::General, "Rules control input: mNumParticipants mismatch.");
 
     info.mCurrentET = currentET;
-    info.mNumActions = numActions;
+    info.mNumActions = originalNumActions;
     info.mAction =  pAction;
     info.mNumParticipants = numParticipants;
     info.mSafetyCarExists = safetyCarExists;

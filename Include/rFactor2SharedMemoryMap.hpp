@@ -16,6 +16,8 @@ Website: thecrewchief.org
 #pragma warning(disable : 4264)   // UpdateGraphics virtual incorrect signature
 #pragma warning(disable : 4121)   // Alignment sensitivity (ISI sets 4 byte pack)
 #pragma warning(disable : 4100)   // Unreferenced params
+#pragma warning(disable : 4244)   // Double to float conversion warnings
+#pragma warning(disable : 4626)   // Assignment operator implicitly defined as deleted
 #include "InternalsPlugin.hpp"
 #pragma warning(pop)
 
@@ -193,8 +195,8 @@ private:
         // Ok, this is either new impact, or first impact since pit stop.
         // Update max and accumulated impact magnitudes.
         auto& td = mExtended.mTrackedDamages[id];
-        td.mMaxImpactMagnitude = max(td.mMaxImpactMagnitude, info.mLastImpactMagnitude);
-        td.mAccumulatedImpactMagnitude += info.mLastImpactMagnitude;
+        td.mMaxImpactMagnitude = max(td.mMaxImpactMagnitude, static_cast<float>(info.mLastImpactMagnitude));
+        td.mAccumulatedImpactMagnitude += static_cast<float>(info.mLastImpactMagnitude);
 
         dti.mLastImpactProcessedET = info.mLastImpactET;
       }

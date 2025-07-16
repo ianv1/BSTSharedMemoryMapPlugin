@@ -981,7 +981,7 @@ struct rF2Extended : public rF2MappedBufferHeader
   ULONGLONG mTicksSessionEnded;               // Ticks when session ended.
 
   // FUTURE: It might be worth to keep the whole scoring capture as a separate double buffer instead of this.
-  // rF2SessionTransitionCapture mSessionTransitionCapture;  // Contains partial internals capture at session transition time.
+  rF2SessionTransitionCapture mSessionTransitionCapture;  // Contains partial internals capture at session transition time.
 
   // Captured non-empty MessageInfoV01::mText message.
   char mDisplayedMessageUpdateCapture[sizeof(decltype(MessageInfoV01::mText))];
@@ -1018,6 +1018,8 @@ struct rF2Extended : public rF2MappedBufferHeader
   bool mWeatherControlInputEnabled;               // Weather Control input buffer is enabled.
   bool mRulesControlInputEnabled;                 // Rules Control input buffer is enabled.
   bool mPluginControlInputEnabled;                // Plugin Control input buffer is enabled.
+
+  rF2PhysicsOptions mPhysics;                     // Current physics settings
 
   struct TrackedDamage
   {
